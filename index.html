@@ -7,11 +7,11 @@
 <style>
 :root{
   --bg:#fbfbfa; --fg:#1d1d1f; --muted:#8a8a8e; --line:#e6e6e3; --panel:#ffffff;
-  --seg:#f0eee7; --word:#ffd75e; --wordfg:#1d1d1f; --accent:#1d1d1f; --accentfg:#fff;
+  --seg:#f0eee7; --seg-on:#ece3bd; --word:#ffd75e; --wordfg:#1d1d1f; --accent:#1d1d1f; --accentfg:#fff;
 }
 @media (prefers-color-scheme:dark){
   :root{ --bg:#161617; --fg:#ececec; --muted:#7d7d82; --line:#2a2a2d; --panel:#1d1d1f;
-    --seg:#26262a; --word:#e0b83a; --wordfg:#111; --accent:#ececec; --accentfg:#161617; }
+    --seg:#26262a; --seg-on:#3b3925; --word:#e0b83a; --wordfg:#111; --accent:#ececec; --accentfg:#161617; }
 }
 *{box-sizing:border-box}
 html,body{height:100%}
@@ -37,7 +37,7 @@ textarea:focus{border-color:var(--muted)}
   padding:18px 4px 40px;overflow-wrap:anywhere;tab-size:6}
 .seg{cursor:pointer;border-radius:4px;transition:background .15s}
 .seg:hover{background:var(--seg)}
-.seg.on{background:var(--seg)}
+.seg.on{background:var(--seg-on)}
 mark{background:var(--word);color:var(--wordfg);border-radius:3px;padding:1px 0}
 .empty{color:var(--muted);text-align:center;margin-top:20vh;white-space:normal}
 [hidden]{display:none!important}
@@ -596,6 +596,7 @@ function pickVoice(mode){
 }
 
 // ---------- playback ----------
+const CPS = { zh:4.7, en:15 };   // spoken characters per second at rate 1 (auto-calibrated)
 let curOffset = null, idx = 0, token = 0, state = 'idle', restartOnResume = false, utter = null, marked = null;
 const synth = window.speechSynthesis;
 if (!synth || !window.SpeechSynthesisUtterance){
@@ -716,13 +717,41 @@ function speakCurrent(from){
   u.lang = seg.mode === 'zh' ? 'zh-CN' : 'en-US';
   const v = pickVoice(seg.mode); if (v){ u.voice = v; u.lang = v.lang; }
   u.rate = parseFloat(speedSel.value) * BASE_RATE[seg.mode];
+  // Some voices (Chrome's online "Google" ones) never report word positions. When no
+  // boundary event arrives, estimate the position from elapsed time instead; the
+  // speed estimate is refined after every sentence.
+  const ctx = { got:false, active:0, last:0, id:0 };
+  u.onstart = () => {
+    if (my !== token) return;
+    ctx.last = performance.now();
+    const cps = CPS[seg.mode] * u.rate;
+    ctx.id = setInterval(() => {
+      if (my !== token || ctx.got){ clearInterval(ctx.id); return; }
+      const now = performance.now();
+      if (state === 'playing') ctx.active += now - ctx.last;
+      ctx.last = now;
+      const p = Math.min(Math.floor(ctx.active / 1000 * cps), seg.spoken.length - skip - 1) + skip;
+      markWord(seg, p);
+      const r = wordRange(seg, p); if (r) curOffset = r[0];
+    }, 100);
+  };
   u.onboundary = e => {
     if (my !== token || (e.name && e.name !== 'word')) return;
+    ctx.got = true;
     markWord(seg, e.charIndex + skip);
     const r = wordRange(seg, e.charIndex + skip); if (r) curOffset = r[0];
   };
-  u.onend = () => { if (my === token){ idx++; speakCurrent(); } };
+  u.onend = () => {
+    clearInterval(ctx.id);
+    if (my !== token) return;
+    if (!ctx.got && ctx.active > 600){
+      const measured = (seg.spoken.length - skip) / (ctx.active / 1000) / u.rate;
+      CPS[seg.mode] = Math.min(Math.max(CPS[seg.mode] * 0.6 + measured * 0.4, 2), 30);
+    }
+    idx++; speakCurrent();
+  };
   u.onerror = e => {
+    clearInterval(ctx.id);
     if (my !== token || e.error === 'interrupted' || e.error === 'canceled') return;
     idx++; speakCurrent();
   };
