@@ -58,10 +58,11 @@ details{max-width:760px;margin:0 auto;padding:0 20px 12px;font-size:13px;color:v
 summary{cursor:pointer;width:max-content}
 .voices{display:flex;gap:10px;flex-wrap:wrap;margin-top:8px;align-items:center}
 .voices label{display:flex;gap:6px;align-items:center;flex:1 1 280px}
-body.pip{margin:0;padding:14px;height:100vh;display:flex;flex-direction:column;gap:10px}
-.pt{flex:1;min-height:0;overflow:auto;white-space:pre-wrap;line-height:1.75;font-size:22px;tab-size:6;overflow-wrap:anywhere}
-.pn{color:var(--muted);font-size:13px;line-height:1.5;max-height:3em;overflow:hidden}
-.pbar{display:flex;gap:6px;align-items:center}
+body.pip{margin:0;padding:12px 14px;height:100vh;position:relative;overflow:hidden}
+.pt{height:100%;overflow:auto;white-space:pre-wrap;line-height:1.65;font-size:20px;tab-size:6;overflow-wrap:anywhere}
+.pn{display:none}
+.pbar{position:absolute;left:8px;right:8px;bottom:8px;display:flex;gap:6px;align-items:center;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:6px;opacity:0;transition:opacity .15s}
+body.pip:hover .pbar{opacity:1}
 .pbar .btn{height:34px;min-width:34px;padding:0 10px}
 .pbar select{height:34px}
 #warn{color:#c0392b;font-size:13px;padding:6px 0 0}
@@ -763,6 +764,7 @@ function speakCurrent(from){
   u.onerror = e => {
     clearInterval(ctx.id);
     if (my !== token || e.error === 'interrupted' || e.error === 'canceled') return;
+    $('warn').hidden = false; $('warn').textContent = 'Speech error: ' + e.error + ' (voice: ' + (u.voice ? u.voice.name : 'default') + ')';
     idx++; speakCurrent();
   };
   utter = u; // keep a reference so it is not garbage collected mid-speech
@@ -793,11 +795,10 @@ function restartCurrent(){
 function togglePlay(){
   if (active === 'paste') showTab('read');
   if (state === 'idle') speakFrom(idx);
-  else if (state === 'playing'){ synth.pause(); state = 'paused'; setBtn(); }
-  else if (state === 'paused'){
-    state = 'playing'; setBtn();
-    if (restartOnResume) speakFrom(idx, curOffset); else synth.resume();
-  }
+  // Pause = stop and remember the word, resume = restart from that word. The engine's own
+  // pause() is ignored by Chrome's online voices and breaks resume on others.
+  else if (state === 'playing'){ token++; resetSynth(); state = 'paused'; restartOnResume = true; setBtn(); }
+  else if (state === 'paused'){ restartOnResume = false; speakFrom(idx, curOffset); }
 }
 
 playBtn.onclick = togglePlay;
@@ -853,7 +854,7 @@ function openPip(win){
   $p('pplay').onclick = togglePlay;
   $p('pprev').onclick = () => $('prev').click();
   $p('pnext').onclick = () => $('next').click();
-  let size = parseInt(store.get('pipsize', '22'), 10) || 22;
+  let size = parseInt(store.get('pipsize', '20'), 10) || 20;
   const applySize = () => { $p('pt').style.fontSize = size + 'px'; store.set('pipsize', size); };
   $p('pminus').onclick = () => { size = Math.max(12, size - 2); applySize(); };
   $p('pplus').onclick = () => { size = Math.min(60, size + 2); applySize(); };
@@ -872,7 +873,7 @@ if (!('documentPictureInPicture' in window)) $('pop').hidden = true;
 $('pop').onclick = async () => {
   if (pipWin){ pipWin.close(); return; }
   if (active === 'paste') showTab('read');
-  try { openPip(await documentPictureInPicture.requestWindow({ width:440, height:280 })); }
+  try { openPip(await documentPictureInPicture.requestWindow({ width:420, height:150 })); }
   catch (err){ $('warn').hidden = false; $('warn').textContent = 'Could not open the floating window: ' + err.message; }
 };
 setBtn();
