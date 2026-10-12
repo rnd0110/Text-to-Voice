@@ -58,6 +58,12 @@ details{max-width:760px;margin:0 auto;padding:0 20px 12px;font-size:13px;color:v
 summary{cursor:pointer;width:max-content}
 .voices{display:flex;gap:10px;flex-wrap:wrap;margin-top:8px;align-items:center}
 .voices label{display:flex;gap:6px;align-items:center;flex:1 1 280px}
+body.pip{margin:0;padding:14px;height:100vh;display:flex;flex-direction:column;gap:10px}
+.pt{flex:1;min-height:0;overflow:auto;white-space:pre-wrap;line-height:1.75;font-size:22px;tab-size:6;overflow-wrap:anywhere}
+.pn{color:var(--muted);font-size:13px;line-height:1.5;max-height:3em;overflow:hidden}
+.pbar{display:flex;gap:6px;align-items:center}
+.pbar .btn{height:34px;min-width:34px;padding:0 10px}
+.pbar select{height:34px}
 #warn{color:#c0392b;font-size:13px;padding:6px 0 0}
 </style>
 </head>
@@ -86,6 +92,7 @@ summary{cursor:pointer;width:max-content}
     <button class="btn" id="stop" title="Stop">■</button>
     <button class="btn" id="prev" title="Previous sentence">‹</button>
     <button class="btn" id="next" title="Next sentence">›</button>
+    <button class="btn" id="pop" title="Pop out a floating window">⧉</button>
     <span class="spacer"></span>
     <span id="pos"></span>
     <select id="speed" aria-label="Speed"></select>
@@ -668,24 +675,26 @@ function wordRange(seg, spokenIdx){
 function markSeg(k){
   if (marked != null && segs[marked]){
     const p = segs[marked];
-    p.el.classList.remove('on'); p.el.textContent = p.text; p.hl = null;
+    p.el.classList.remove('on'); p.el.textContent = p.text; p.hl = null; p.range = null;
   }
   marked = k;
-  if (k == null || !segs[k]) return;
+  if (k == null || !segs[k]){ renderPip(); return; }
   segs[k].el.classList.add('on');
   if (active === 'read') segs[k].el.scrollIntoView({ block:'center', behavior:'smooth' });
   updatePos();
+  renderPip();
 }
 function markWord(seg, spokenIdx){
   const r = wordRange(seg, spokenIdx);
   if (!r) return;
   const key = r[0] + ':' + r[1];
   if (seg.hl === key) return;
-  seg.hl = key;
+  seg.hl = key; seg.range = r;
   const mk = document.createElement('mark');
   mk.textContent = seg.text.slice(r[0], r[1]);
   seg.el.textContent = '';
   seg.el.append(seg.text.slice(0, r[0]), mk, seg.text.slice(r[1]));
+  renderPip();
 }
 
 function updatePos(){
@@ -693,6 +702,7 @@ function updatePos(){
 }
 function setBtn(){
   playBtn.textContent = state === 'playing' ? '❚❚ Pause' : '▶ Play';
+  if (pipWin){ const b = pipWin.document.getElementById('pplay'); if (b) b.textContent = state === 'playing' ? '❚❚' : '▶'; }
 }
 
 function speakCurrent(from){
@@ -794,7 +804,10 @@ playBtn.onclick = togglePlay;
 $('stop').onclick = stopAll;
 $('prev').onclick = () => { if (state === 'idle'){ idx = Math.max(0, idx - 1); markSeg(idx); } else speakFrom(idx - 1); };
 $('next').onclick = () => { if (state === 'idle'){ idx = Math.min(segs.length - 1, idx + 1); markSeg(idx); } else speakFrom(idx + 1); };
-speedSel.onchange = () => { store.set('speed', speedSel.value); restartCurrent(); };
+speedSel.onchange = () => {
+  store.set('speed', speedSel.value); restartCurrent();
+  if (pipWin){ const sel = pipWin.document.getElementById('pspeed'); if (sel) sel.value = speedSel.value; }
+};
 
 document.addEventListener('keydown', e => {
   const t = e.target.tagName;
@@ -804,6 +817,64 @@ document.addEventListener('keydown', e => {
   else if (e.code === 'ArrowLeft') $('prev').click();
 });
 window.addEventListener('beforeunload', () => { if (synth) resetSynth(); });
+// ---------- floating window (Document Picture-in-Picture, Chrome / Edge) ----------
+let pipWin = null;
+function renderPip(){
+  if (!pipWin) return;
+  const d = pipWin.document, pt = d.getElementById('pt'), pn = d.getElementById('pn');
+  if (!pt) return;
+  const seg = marked != null ? segs[marked] : null;
+  pt.textContent = ''; pn.textContent = '';
+  if (!seg){ pt.textContent = segs.length ? 'Press ▶ to start' : 'Nothing to read yet'; return; }
+  const r = seg.range;
+  if (r){
+    const mk = d.createElement('mark'); mk.textContent = seg.text.slice(r[0], r[1]);
+    pt.append(seg.text.slice(0, r[0]), mk, seg.text.slice(r[1]));
+  } else pt.textContent = seg.text;
+  const nx = segs.slice(marked + 1).find(g => !g.skip);
+  if (nx) pn.textContent = nx.text;
+}
+function openPip(win){
+  pipWin = win;
+  const d = win.document;
+  d.head.append(document.querySelector('style').cloneNode(true));
+  d.title = 'Read Aloud';
+  d.body.className = 'pip';
+  d.body.innerHTML = '<div class="pt" id="pt"></div><div class="pn" id="pn"></div>' +
+    '<div class="pbar"><button class="btn" id="pprev" title="Previous">‹</button>' +
+    '<button class="btn primary" id="pplay" style="min-width:50px"></button>' +
+    '<button class="btn" id="pnext" title="Next">›</button><span class="spacer"></span>' +
+    '<button class="btn" id="pminus" title="Smaller text">A−</button><button class="btn" id="pplus" title="Larger text">A+</button>' +
+    '<select id="pspeed" aria-label="Speed"></select></div>';
+  const $p = id => d.getElementById(id);
+  [...speedSel.options].forEach(o => $p('pspeed').append(new Option(o.textContent, o.value)));
+  $p('pspeed').value = speedSel.value;
+  $p('pspeed').onchange = () => { speedSel.value = $p('pspeed').value; speedSel.onchange(); };
+  $p('pplay').onclick = togglePlay;
+  $p('pprev').onclick = () => $('prev').click();
+  $p('pnext').onclick = () => $('next').click();
+  let size = parseInt(store.get('pipsize', '22'), 10) || 22;
+  const applySize = () => { $p('pt').style.fontSize = size + 'px'; store.set('pipsize', size); };
+  $p('pminus').onclick = () => { size = Math.max(12, size - 2); applySize(); };
+  $p('pplus').onclick = () => { size = Math.min(60, size + 2); applySize(); };
+  applySize();
+  d.addEventListener('keydown', e => {
+    if (e.target.tagName === 'SELECT') return;
+    if (e.code === 'Space'){ e.preventDefault(); togglePlay(); }
+    else if (e.code === 'ArrowRight') $('next').click();
+    else if (e.code === 'ArrowLeft') $('prev').click();
+  });
+  win.addEventListener('pagehide', () => { if (pipWin === win) pipWin = null; $('pop').classList.remove('on'); });
+  $('pop').classList.add('on');
+  setBtn(); renderPip();
+}
+if (!('documentPictureInPicture' in window)) $('pop').hidden = true;
+$('pop').onclick = async () => {
+  if (pipWin){ pipWin.close(); return; }
+  if (active === 'paste') showTab('read');
+  try { openPip(await documentPictureInPicture.requestWindow({ width:440, height:280 })); }
+  catch (err){ $('warn').hidden = false; $('warn').textContent = 'Could not open the floating window: ' + err.message; }
+};
 setBtn();
 </script>
 </body>
