@@ -791,3 +791,11 @@ if (ext){
   takePending();
   ext.storage.onChanged.addListener((c, area) => { if (area === 'session' && c.pending && c.pending.newValue) takePending(); });
 }
+
+// ---------- installable web app (phone "Add to Home Screen" + offline) ----------
+if ('serviceWorker' in navigator && /^https?:$/.test(location.protocol)){
+  navigator.serviceWorker.register('sw.js').catch(() => {});
+}
+
+// On a phone keep the voice settings tucked away so the text gets the screen.
+if (matchMedia('(max-width:520px)').matches){ const dt = document.querySelector('details'); if (dt) dt.open = false; }

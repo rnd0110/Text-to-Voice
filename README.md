@@ -18,3 +18,8 @@ Requires Chrome 116+. After changing any file, press the reload icon on the exte
 ## Voices
 Chrome's online "Google 普通话" voice sounds the most natural but needs internet and does not
 report word positions (the word highlight is then estimated). Local system voices work offline.
+
+## Use on a phone
+Host the folder as a static site (e.g. GitHub Pages: Settings → Pages → Deploy from branch `main`, folder `/`).
+Open the URL on the phone, then **Add to Home Screen** (iOS Safari: Share → Add to Home Screen; Android Chrome: menu → Install app).
+After the first load it also works offline with local voices. Speech usually stops when the screen locks.

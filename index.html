@@ -2,7 +2,12 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#1d1d1f">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Read Aloud">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icons/icon180.png">
 <title>Read Aloud</title>
 <style>
 :root{
@@ -15,6 +20,7 @@
 }
 *{box-sizing:border-box}
 html,body{height:100%}
+body{height:100dvh}
 body{margin:0;background:var(--bg);color:var(--fg);
   font:16px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;
   display:flex;flex-direction:column}
@@ -41,7 +47,7 @@ textarea:focus{border-color:var(--muted)}
 mark{background:var(--word);color:var(--wordfg);border-radius:3px;padding:1px 0}
 .empty{color:var(--muted);text-align:center;margin-top:20vh;white-space:normal}
 [hidden]{display:none!important}
-footer{border-top:1px solid var(--line);background:var(--bg)}
+footer{border-top:1px solid var(--line);background:var(--bg);padding-bottom:env(safe-area-inset-bottom)}
 .bar{max-width:760px;margin:0 auto;padding:12px 20px;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
 .btn{border:1px solid var(--line);background:var(--panel);color:var(--fg);font:inherit;font-size:14px;
   height:38px;min-width:38px;padding:0 12px;border-radius:10px;cursor:pointer}
@@ -65,6 +71,13 @@ body.pip{margin:0;padding:12px 14px;height:100vh;position:relative;overflow:hidd
 body.pip:hover .pbar{opacity:1}
 .pbar .btn{height:34px;min-width:34px;padding:0 10px}
 .pbar select{height:34px}
+@media (max-width:520px){
+  #pos{display:none}
+  .bar{padding:10px 14px;gap:8px}
+  .btn{min-width:36px;padding:0 10px}
+  .btn.primary{min-width:76px}
+  header,main{padding-left:14px;padding-right:14px}
+}
 #warn{color:#c0392b;font-size:13px;padding:6px 0 0}
 </style>
 </head>
