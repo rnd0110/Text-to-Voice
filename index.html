@@ -103,6 +103,7 @@ a.btn{display:inline-flex;align-items:center;text-decoration:none}
   <div id="warn" hidden></div>
   <div class="vcard" id="vcard" hidden>
     <div id="vtext"></div>
+    <pre id="vdump2" style="white-space:pre-wrap;font-size:12px;margin:8px 0 0"></pre>
     <div class="vact"><a class="btn" id="vopen" hidden>打开系统设置</a><button class="btn" id="vrecheck">重新检测</button></div>
   </div>
 </main>
@@ -121,6 +122,7 @@ a.btn{display:inline-flex;align-items:center;text-decoration:none}
   <details open>
     <summary>Voices</summary>
     <div class="voices" id="tip" style="margin-bottom:6px"></div>
+    <details id="vall"><summary>检测到的全部语音 / all detected voices</summary><pre id="vdump" style="white-space:pre-wrap;font-size:12px;margin:6px 0 0"></pre></details>
     <div class="voices">
       <label>中文 <select id="voice-zh"></select><button class="btn pv" data-mode="zh" title="试听">▶</button></label>
       <label>English <select id="voice-en"></select><button class="btn pv" data-mode="en" title="Preview">▶</button></label>

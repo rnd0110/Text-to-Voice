@@ -463,11 +463,13 @@ function platformTip(){
   return '没有中文语音时：请用 Chrome 或 Edge，并在系统里安装中文语音。';
 }
 $('tip').textContent = platformTip();
+const isZh = v => /^(zh|cmn|yue)/i.test(v.lang.replace('_', '-')) || /chinese|mandarin|普通话|國語|国语|中文|粤/i.test(v.name);
+const isEn = v => /^en/i.test(v.lang.replace('_', '-'));
 function fillVoices(){
   voices = speechSynthesis.getVoices();
-  for (const [mode, selId, test, label] of [['zh', 'voice-zh', /^zh/i, '中文'], ['en', 'voice-en', /^en/i, 'English']]){
+  for (const [mode, selId, test, label] of [['zh', 'voice-zh', isZh, '中文'], ['en', 'voice-en', isEn, 'English']]){
     const sel = $(selId), saved = store.get('voice-' + mode, '');
-    const all = voices.filter(v => test.test(v.lang));
+    const all = voices.filter(v => test(v));
     const nice = all.filter(v => !NOVELTY.test(v.name));   // hide the robotic novelty voices
     const list = (nice.length ? nice : all).sort((a, b) => rank(b) - rank(a));
     sel.textContent = '';
@@ -479,7 +481,9 @@ function fillVoices(){
       const o = document.createElement('option'); o.textContent = '此设备没有安装 / not installed'; sel.append(o);
     } else if (saved && list.some(v => v.voiceURI === saved)) sel.value = saved;
   }
-  const noZh = !voices.some(v => /^zh/i.test(v.lang));
+  const dump = navigator.userAgent.replace(/\)\s.*/, ')') + '\n' + (voices.length ? voices.map(v => `${v.name} | ${v.lang}${v.localService ? '' : ' | online'}`).join('\n') : '(no voices reported by this browser)');
+  $('vdump').textContent = dump; $('vdump2').textContent = voices.length + ' voices detected:\n' + dump;
+  const noZh = !voices.some(isZh);
   $('vcard').hidden = !noZh;
   if (noZh){
     $('vtext').textContent = (voices.length ? '这台设备没有中文语音。' : '还没有检测到任何语音。') + platformTip() + ' 安装后若仍未出现，请完全重启浏览器再回来。';
