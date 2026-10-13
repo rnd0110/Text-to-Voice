@@ -449,6 +449,20 @@ function rank(v){
 }
 // Chinese sounds rushed at the engine's "1×", so calibrate the baseline lower.
 const BASE_RATE = { zh: 0.8, en: 1 };
+// Voices come from the device, so tell people how to get better ones on their platform.
+function platformTip(){
+  const ua = navigator.userAgent;
+  if (/iPhone|iPad|iPod/.test(ua) || (/Macintosh/.test(ua) && navigator.maxTouchPoints > 1))
+    return 'iPhone/iPad：设置 → 辅助功能 → 朗读内容 → 声音 → 中文，下载带“增强/优质”的语音，装好后刷新本页。';
+  if (/Android/.test(ua))
+    return 'Android：用 Chrome；设置 → 系统 → 语言 → 文字转语音 → 选“Google 文字转语音”，在“安装语音数据”里下载中文。';
+  if (/Windows/.test(ua))
+    return 'Windows：用 Microsoft Edge 可用自然的“Xiaoxiao”等在线语音；或在 设置 → 时间和语言 → 语言和区域 添加中文并安装语音。';
+  if (/Macintosh/.test(ua))
+    return 'Mac：系统设置 → 辅助功能 → 朗读内容 → 系统语音 → 管理语音，下载带“增强/优质”的中文语音；或用 Chrome（Google 语音）/ Edge。';
+  return '没有中文语音时：请用 Chrome 或 Edge，并在系统里安装中文语音。';
+}
+$('tip').textContent = platformTip();
 function fillVoices(){
   voices = speechSynthesis.getVoices();
   for (const [mode, selId, test, label] of [['zh', 'voice-zh', /^zh/i, '中文'], ['en', 'voice-en', /^en/i, 'English']]){
@@ -462,13 +476,13 @@ function fillVoices(){
       o.value = v.voiceURI; o.textContent = `${v.name} (${v.lang})`; sel.append(o);
     });
     if (!list.length){
-      const o = document.createElement('option'); o.textContent = 'none installed'; sel.append(o);
+      const o = document.createElement('option'); o.textContent = '此设备没有安装 / not installed'; sel.append(o);
     } else if (saved && list.some(v => v.voiceURI === saved)) sel.value = saved;
   }
   const w = $('warn');
   const noZh = !voices.some(v => /^zh/i.test(v.lang));
   w.hidden = !(voices.length && noZh);
-  if (!w.hidden) w.textContent = 'No Chinese voice found on this system. On macOS: System Settings → Accessibility → Spoken Content → System Voice → Manage Voices → add a Chinese voice.';
+  if (!w.hidden) w.textContent = '这台设备没有中文语音。' + platformTip();
 }
 const PREVIEW = { zh:'2024年营业收入增长12.5%，净利润为85.3亿元，较10/09上涨。', en:'In 2024, revenue rose 12.5% to $1,234.56 million.' };
 function preview(mode){
