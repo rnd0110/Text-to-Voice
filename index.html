@@ -78,6 +78,9 @@ body.pip:hover .pbar{opacity:1}
   .btn.primary{min-width:76px}
   header,main{padding-left:14px;padding-right:14px}
 }
+a.btn{display:inline-flex;align-items:center;text-decoration:none}
+.vcard{border:1px solid var(--line);background:var(--panel);border-radius:12px;padding:12px 14px;font-size:13px;line-height:1.6;margin-top:10px}
+.vact{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap}
 #warn{color:#c0392b;font-size:13px;padding:6px 0 0}
 </style>
 </head>
@@ -98,6 +101,10 @@ body.pip:hover .pbar{opacity:1}
   </section>
   <section id="read" hidden></section>
   <div id="warn" hidden></div>
+  <div class="vcard" id="vcard" hidden>
+    <div id="vtext"></div>
+    <div class="vact"><a class="btn" id="vopen" hidden>打开系统设置</a><button class="btn" id="vrecheck">重新检测</button></div>
+  </div>
 </main>
 
 <footer>

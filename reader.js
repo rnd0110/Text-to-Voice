@@ -479,11 +479,28 @@ function fillVoices(){
       const o = document.createElement('option'); o.textContent = '此设备没有安装 / not installed'; sel.append(o);
     } else if (saved && list.some(v => v.voiceURI === saved)) sel.value = saved;
   }
-  const w = $('warn');
   const noZh = !voices.some(v => /^zh/i.test(v.lang));
-  w.hidden = !(voices.length && noZh);
-  if (!w.hidden) w.textContent = '这台设备没有中文语音。' + platformTip();
+  $('vcard').hidden = !noZh;
+  if (noZh){
+    $('vtext').textContent = (voices.length ? '这台设备没有中文语音。' : '还没有检测到任何语音。') + platformTip() + ' 安装后若仍未出现，请完全重启浏览器再回来。';
+    const link = settingsLink();
+    $('vopen').hidden = !link;
+    if (link) $('vopen').href = link;
+  }
 }
+// Pages cannot install voices, but some platforms let a link open the right settings page.
+function settingsLink(){
+  const ua = navigator.userAgent;
+  if (/Windows/.test(ua)) return 'ms-settings:speech';
+  if (/Android/.test(ua)) return 'intent://#Intent;action=com.android.settings.TTS_SETTINGS;end';
+  return '';
+}
+$('vrecheck').onclick = () => {
+  fillVoices();
+  if (!$('vcard').hidden){ const t = $('vtext'); t.textContent = '仍未检测到中文语音。' + t.textContent.replace(/^(这台设备没有中文语音。|还没有检测到任何语音。)/, ''); }
+};
+// Chrome fills the voice list late; evaluate once more in case it was still empty.
+setTimeout(() => { if (typeof fillVoices === 'function') fillVoices(); }, 1500);
 const PREVIEW = { zh:'2024年营业收入增长12.5%，净利润为85.3亿元，较10/09上涨。', en:'In 2024, revenue rose 12.5% to $1,234.56 million.' };
 function preview(mode){
   if (!synth) return;
